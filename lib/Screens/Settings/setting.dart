@@ -109,6 +109,12 @@ class _SettingPageState extends State<SettingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final List<String> userThemesList = <String>[
+      'Default',
+      ...userThemes.keys.map((theme) => theme as String),
+      'Custom',
+    ];
+
     return Scaffold(
       // backgroundColor: Colors.transparent,
       body: CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
@@ -796,27 +802,8 @@ class _SettingPageState extends State<SettingPage> {
                               currentTheme.switchColor('White', colorHue);
                             }),
                         ListTile(
-                          title: Text(AppLocalizations.of(context)!.saveTheme),
-                          onTap: () {
-                            final themeName = 'Theme ${userThemes.length + 1}';
-                            currentTheme.saveTheme(themeName);
-                            currentTheme.setInitialTheme(themeName);
-                            setState(() {
-                              userThemes = Hive.box('settings')
-                                  .get('userThemes', defaultValue: {}) as Map;
-                              theme = themeName;
-                            });
-                            ShowSnackBar().showSnackBar(
-                              context,
-                              AppLocalizations.of(context)!.themeSaved,
-                            );
-                          },
-                          dense: true,
-                        ),
-                        ListTile(
                           title:
                               Text(AppLocalizations.of(context)!.currentTheme),
-                          onTap: () {},
                           trailing: DropdownButton(
                             value: theme,
                             style: TextStyle(
@@ -908,20 +895,150 @@ class _SettingPageState extends State<SettingPage> {
                                 });
                               }
                             },
-                            items: <String>[
-                              'Default',
-                              ...userThemes.keys
-                                  .map((theme) => theme as String),
-                              'Custom',
-                            ].map<DropdownMenuItem<String>>((String value) {
+                            selectedItemBuilder: (BuildContext context) {
+                              return userThemesList.map<Widget>((String item) {
+                                return Text(item);
+                              }).toList();
+                            },
+                            items: userThemesList.map((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
-                                child: Text(value),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      flex: 2,
+                                      child: Text(
+                                        value,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (value != 'Default' && value != 'Custom')
+                                      Flexible(
+                                        child: IconButton(
+                                          //padding: EdgeInsets.zero,
+                                          iconSize: 18,
+                                          splashRadius: 18,
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                            showDialog(
+                                              context: context,
+                                              builder: (BuildContext context) =>
+                                                  AlertDialog(
+                                                title: Text(
+                                                  AppLocalizations.of(context)!
+                                                      .deleteTheme,
+                                                  style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .secondary,
+                                                  ),
+                                                ),
+                                                content: Text(
+                                                    '${AppLocalizations.of(context)!.deleteThemeSubtitle} $value?'),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed:
+                                                        Navigator.of(context)
+                                                            .pop,
+                                                    child: Text(
+                                                        AppLocalizations.of(
+                                                                context)!
+                                                            .cancel),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      currentTheme
+                                                          .deleteTheme(value);
+                                                      if (currentTheme
+                                                              .getInitialTheme() ==
+                                                          value) {
+                                                        currentTheme
+                                                            .setInitialTheme(
+                                                                'Custom');
+                                                        theme = 'Custom';
+                                                      }
+                                                      setState(() {
+                                                        userThemes =
+                                                            currentTheme
+                                                                .getThemes();
+                                                      });
+                                                      ShowSnackBar()
+                                                          .showSnackBar(
+                                                        context,
+                                                        AppLocalizations.of(
+                                                                context)!
+                                                            .themeDeleted,
+                                                      );
+                                                      return Navigator.of(
+                                                              context)
+                                                          .pop();
+                                                    },
+                                                    child: Text(
+                                                      AppLocalizations.of(
+                                                              context)!
+                                                          .delete,
+                                                      style: TextStyle(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .error,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                          icon: Icon(
+                                            Icons.delete,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                          ),
+                                        ),
+                                      )
+                                  ],
+                                ),
                               );
                             }).toList(),
+                            isDense: true,
                           ),
                           dense: true,
                         ),
+                        Visibility(
+                          visible: theme == 'Custom',
+                          child: ListTile(
+                            title:
+                                Text(AppLocalizations.of(context)!.saveTheme),
+                            onTap: () {
+                              final initialThemeName =
+                                  '${AppLocalizations.of(context)!.theme} ${userThemes.length + 1}';
+                              TextInputDialog().showTextInputDialog(
+                                context: context,
+                                title: AppLocalizations.of(context)!
+                                    .enterThemeName,
+                                onSubmitted: (value) {
+                                  if (value == '') return;
+                                  currentTheme.saveTheme(value);
+                                  currentTheme.setInitialTheme(value);
+                                  setState(() {
+                                    userThemes = currentTheme.getThemes();
+                                    theme = value;
+                                  });
+                                  ShowSnackBar().showSnackBar(
+                                    context,
+                                    AppLocalizations.of(context)!.themeSaved,
+                                  );
+                                  Navigator.of(context).pop();
+                                },
+                                keyboardType: TextInputType.text,
+                                initialText: initialThemeName,
+                              );
+                            },
+                            dense: true,
+                          ),
+                        )
                       ],
                     ),
                   ),

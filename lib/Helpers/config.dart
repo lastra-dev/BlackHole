@@ -302,8 +302,24 @@ class MyTheme with ChangeNotifier {
     });
   }
 
+  void deleteTheme(String themeName) {
+    final userThemes =
+        Hive.box('settings').get('userThemes', defaultValue: {}) as Map;
+    userThemes.remove(themeName);
+
+    Hive.box('settings').put('userThemes', {...userThemes});
+  }
+
+  Map getThemes() {
+    return Hive.box('settings').get('userThemes', defaultValue: {}) as Map;
+  }
+
   void setInitialTheme(String themeName) {
     Hive.box('settings').put('theme', themeName);
+  }
+
+  String getInitialTheme() {
+    return Hive.box('settings').get('theme') as String;
   }
 }
 
