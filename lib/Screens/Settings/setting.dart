@@ -44,6 +44,10 @@ class _SettingPageState extends State<SettingPage> {
       Hive.box('settings').get('canvasColor', defaultValue: 'Grey') as String;
   String cardColor =
       Hive.box('settings').get('cardColor', defaultValue: 'Grey850') as String;
+  String theme =
+      Hive.box('settings').get('theme', defaultValue: 'Default') as String;
+  Map userThemes =
+      Hive.box('settings').get('userThemes', defaultValue: {}) as Map;
   String region =
       Hive.box('settings').get('region', defaultValue: 'India') as String;
   bool useProxy =
@@ -169,6 +173,7 @@ class _SettingPageState extends State<SettingPage> {
                               box.put('useSystemTheme', false);
                               currentTheme.switchTheme(
                                   isDark: val, useSystemTheme: false);
+                              switchToCustomTheme();
                             }),
                         BoxSwitchTile(
                             title: Text(
@@ -177,6 +182,7 @@ class _SettingPageState extends State<SettingPage> {
                             defaultValue: true,
                             onChanged: (bool val, Box box) {
                               currentTheme.switchTheme(useSystemTheme: val);
+                              switchToCustomTheme();
                             }),
                         ListTile(
                           title: Text(AppLocalizations.of(context)!.accent),
@@ -255,6 +261,7 @@ class _SettingPageState extends State<SettingPage> {
                                                           colors[index],
                                                           colorHue);
                                                       setState(() {});
+                                                      switchToCustomTheme();
                                                       Navigator.pop(context);
                                                     },
                                                     child: Container(
@@ -377,6 +384,7 @@ class _SettingPageState extends State<SettingPage> {
                                                       currentTheme.backGrad =
                                                           index;
                                                       widget.callback!();
+                                                      switchToCustomTheme();
                                                       Navigator.pop(context);
                                                       setState(() {});
                                                     },
@@ -497,6 +505,7 @@ class _SettingPageState extends State<SettingPage> {
                                                       currentTheme.cardGrad =
                                                           index;
                                                       widget.callback!();
+                                                      switchToCustomTheme();
                                                       Navigator.pop(context);
                                                       setState(() {});
                                                     },
@@ -616,6 +625,7 @@ class _SettingPageState extends State<SettingPage> {
                                                           'bottomGrad', index);
                                                       currentTheme.bottomGrad =
                                                           index;
+                                                      switchToCustomTheme();
                                                       Navigator.pop(context);
                                                       setState(() {});
                                                     },
@@ -688,6 +698,7 @@ class _SettingPageState extends State<SettingPage> {
                                   underline: const SizedBox(),
                                   onChanged: (String? newValue) {
                                     if (newValue != null) {
+                                      switchToCustomTheme();
                                       setState(() {
                                         currentTheme
                                             .switchCanvasColor(newValue);
@@ -724,6 +735,7 @@ class _SettingPageState extends State<SettingPage> {
                                   underline: const SizedBox(),
                                   onChanged: (String? newValue) {
                                     if (newValue != null) {
+                                      switchToCustomTheme();
                                       setState(() {
                                         currentTheme.switchCardColor(newValue);
                                         cardColor = newValue;
@@ -784,34 +796,132 @@ class _SettingPageState extends State<SettingPage> {
                               currentTheme.switchColor('White', colorHue);
                             }),
                         ListTile(
-                            title: Text(
-                                AppLocalizations.of(context)!.changeDefault),
-                            dense: true,
-                            onTap: () {
-                              settingsBox.put('backGrad', 1);
-                              currentTheme.backGrad = 1;
-                              settingsBox.put('cardGrad', 3);
-                              currentTheme.cardGrad = 3;
-                              settingsBox.put('bottomGrad', 2);
-                              currentTheme.bottomGrad = 2;
+                          title: Text(AppLocalizations.of(context)!.saveTheme),
+                          onTap: () {
+                            final themeName = 'Theme ${userThemes.length + 1}';
+                            currentTheme.saveTheme(themeName);
+                            currentTheme.setInitialTheme(themeName);
+                            setState(() {
+                              userThemes = Hive.box('settings')
+                                  .get('userThemes', defaultValue: {}) as Map;
+                              theme = themeName;
+                            });
+                            ShowSnackBar().showSnackBar(
+                              context,
+                              AppLocalizations.of(context)!.themeSaved,
+                            );
+                          },
+                          dense: true,
+                        ),
+                        ListTile(
+                          title:
+                              Text(AppLocalizations.of(context)!.currentTheme),
+                          onTap: () {},
+                          trailing: DropdownButton(
+                            value: theme,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  Theme.of(context).textTheme.bodyText1!.color,
+                            ),
+                            underline: const SizedBox(),
+                            onChanged: (String? themeChoice) {
+                              if (themeChoice != null) {
+                                const deflt = 'Default';
 
-                              currentTheme.switchCanvasColor('Grey',
-                                  notify: false);
-                              canvasColor = 'Grey';
+                                currentTheme.setInitialTheme(themeChoice);
 
-                              currentTheme.switchCardColor('Grey850',
-                                  notify: false);
-                              cardColor = 'Grey850';
+                                setState(() {
+                                  theme = themeChoice;
+                                  if (themeChoice == 'Custom') return;
+                                  final selectedTheme = userThemes[themeChoice];
 
-                              themeColor = 'Teal';
-                              colorHue = 400;
+                                  settingsBox.put(
+                                    'backGrad',
+                                    themeChoice == deflt
+                                        ? 1
+                                        : selectedTheme['backGrad'],
+                                  );
+                                  currentTheme.backGrad = themeChoice == deflt
+                                      ? 1
+                                      : selectedTheme['backGrad'] as int;
 
-                              currentTheme.switchColor(themeColor, colorHue,
-                                  notify: false);
+                                  settingsBox.put(
+                                    'cardGrad',
+                                    themeChoice == deflt
+                                        ? 3
+                                        : selectedTheme['cardGrad'],
+                                  );
+                                  currentTheme.cardGrad = themeChoice == deflt
+                                      ? 3
+                                      : selectedTheme['cardGrad'] as int;
 
-                              currentTheme.switchTheme(
-                                  useSystemTheme: false, isDark: true);
-                            }),
+                                  settingsBox.put(
+                                    'bottomGrad',
+                                    themeChoice == deflt
+                                        ? 2
+                                        : selectedTheme['bottomGrad'],
+                                  );
+                                  currentTheme.bottomGrad = themeChoice == deflt
+                                      ? 2
+                                      : selectedTheme['bottomGrad'] as int;
+
+                                  currentTheme.switchCanvasColor(
+                                      themeChoice == deflt
+                                          ? 'Grey'
+                                          : selectedTheme['canvasColor']
+                                              as String,
+                                      notify: false);
+                                  canvasColor = themeChoice == deflt
+                                      ? 'Grey'
+                                      : selectedTheme['canvasColor'] as String;
+
+                                  currentTheme.switchCardColor(
+                                      themeChoice == deflt
+                                          ? 'Grey850'
+                                          : selectedTheme['cardColor']
+                                              as String,
+                                      notify: false);
+                                  cardColor = themeChoice == deflt
+                                      ? 'Grey850'
+                                      : selectedTheme['cardColor'] as String;
+
+                                  themeColor = themeChoice == deflt
+                                      ? 'Teal'
+                                      : selectedTheme['accentColor'] as String;
+                                  colorHue = themeChoice == deflt
+                                      ? 400
+                                      : selectedTheme['colorHue'] as int;
+
+                                  currentTheme.switchColor(
+                                    themeColor,
+                                    colorHue,
+                                    notify: false,
+                                  );
+
+                                  currentTheme.switchTheme(
+                                    useSystemTheme: !(themeChoice == deflt) &&
+                                        selectedTheme['useSystemTheme'] as bool,
+                                    isDark: themeChoice == deflt ||
+                                        selectedTheme['isDark'] as bool,
+                                  );
+                                });
+                              }
+                            },
+                            items: <String>[
+                              'Default',
+                              ...userThemes.keys
+                                  .map((theme) => theme as String),
+                              'Custom',
+                            ].map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              );
+                            }).toList(),
+                          ),
+                          dense: true,
+                        ),
                       ],
                     ),
                   ),
@@ -2018,6 +2128,16 @@ class _SettingPageState extends State<SettingPage> {
         ),
       ]),
     );
+  }
+
+  void switchToCustomTheme() {
+    const custom = 'Custom';
+    if (theme != custom) {
+      currentTheme.setInitialTheme(custom);
+      setState(() {
+        theme = custom;
+      });
+    }
   }
 }
 
